@@ -1,0 +1,71 @@
+//This function is used to generate the entries from the data exported to CSV from TableTopEvents Merch Sales
+//Most purchases get 1 raffle ticket, but a "bundle" represents 5 tickets per bundle.
+function generateListFrom2020Raw() {
+  var wb = SpreadsheetApp.openById("1YlQVs9b5iJGkxCKgSvRANINmOVDJOs-6um2KD3jwm7k");
+  var ss = wb.getSheetByName('2020Raw'); //Source data for the script
+  var dl = wb.getSheetByName('DrawList'); //Output of the script goes here
+  var num = getLastRow(ss) +1;
+  var row = getLastRow(dl) +1;
+  var i;
+  
+  for (i = 1; i < num+1; i++) {
+    var tiks = ss.getRange(i,2).getValue();
+    var badge = ss.getRange(i,4).getValue();
+    var fullname = ss.getRange(i,5).getValue() + ' ' + ss.getRange(i,6).getValue();
+    var typename = ss.getRange(i,1).getValue(); //Need to know if this was a bundle or not
+    var unique = ss.getRange(i,7).getValue(); //Used to track the winning number back to the source purchase
+    var j;
+    var vstart = 0;
+    if (typename.includes('Bundle')) { vstart = 1;}
+    if (typename.includes('Bundle')) { tiks = tiks * 5;}
+    for (j = 0; j < tiks; j++)
+    {
+      var nn = j + vstart;
+      dl.getRange(row,1).setValue(badge + '.' + unique + '.' + nn + ' - ' + fullname);
+      dl.getRange(row,2).setValue(row); //I set the row to make it easier for the other script to discard duplicate winners if they have already been drawn
+      row = row + 1;
+    }
+  }
+}
+
+function pickNextWinner() {
+  var wb = SpreadsheetApp.openById("1YlQVs9b5iJGkxCKgSvRANINmOVDJOs-6um2KD3jwm7k");
+  var dl = wb.getSheetByName('DrawList'); //Source data
+  var ss = wb.getSheetByName('Winners'); //Output fromt the script
+  var num = getLastRow(dl) +1;
+  ss.getRange(4,6).setValue(''); //4,6 is a spot I reserved for output messages
+  
+  //row is the row number where the output of the next drawing gets written to
+  var row = ss.getRange(3,6).getValue();
+  //THE winner
+  var rando = getRandomNumber(1,num);
+  for (j = 5; j < row; j++)
+  {
+    var alreadyPicked= ss.getRange(j,1).getValue();
+    if (rando == alreadyPicked)
+    {
+      ss.getRange(4,6).setValue('duplicate rolled:' + rando);  //Set an informational output message
+      return;
+    }    
+  }
+  
+  //Output the selected winner
+  ss.getRange(row,1).setValue(rando);
+  var winner = dl.getRange(rando,1).getValue();//who is winner by number
+  ss.getRange(row,2).setValue(winner);
+  //Update the next row number to write to
+  ss.getRange(3,6).setValue(row+1);
+  
+  //A helper function
+  function getRandomNumber(min, max) {
+    return Math.floor(Math.random() * (max - min +1) + min);
+  }
+}
+
+//A helper function
+function getLastRow(sheet)  {
+    var lastrow = sheet.getLastRow();
+    if (lastrow > 1) { lastrow = lastrow - 1;}
+    return lastrow;
+}
+
